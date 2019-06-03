@@ -96,7 +96,8 @@ class comment_info_extract:
                 break
             issueNumber = issue[0]
             i=i+1
-            apiCall = "atom" + "/" + "atom" + "/issues/"+ str(issueNumber)+ "/comments?access_token=7c74578d87f3df9d261f1c20544273f42ab0b67d"
+            # NOTE: YOU WILL HAVE TO ADD THE ACCESS TOKEN IN THE NEXT LINE
+            apiCall = "atom" + "/" + "atom" + "/issues/"+ str(issueNumber)+ "/comments?access_token= git_access_token"
             commentsList = apiOperations.extractApis(apiCall)
             for comment in commentsList:
                 try:
