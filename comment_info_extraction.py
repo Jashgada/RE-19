@@ -3,6 +3,7 @@ import DatabaseOperations
 import urllib.request
 import json
 import datetime
+import time
 
 
 
@@ -14,7 +15,12 @@ class comment_info_extract:
     # Returned: A dictionary, as returned by the api
     def extractIssueApi(self, statement):
         url = "https://api.github.com/repos/" + statement
-        response = urllib.request.urlopen(url)
+        try:
+            response = urllib.request.urlopen(url)
+        except Exception as e:
+            print(e)
+            time.sleep(3600)
+            self.extractIssueApi(statement)
         data = json.loads(response.read())
         return data
 
@@ -92,12 +98,9 @@ class comment_info_extract:
         issueList = DatabaseOperations.query_data(query_stmt)
         i = 0
         for issue in issueList:
-            if i >10:
-                break
             issueNumber = issue[0]
             i=i+1
-            # NOTE: YOU WILL HAVE TO ADD THE ACCESS TOKEN IN THE NEXT LINE
-            apiCall = "atom" + "/" + "atom" + "/issues/"+ str(issueNumber)+ "/comments?access_token= git_access_token"
+            apiCall = "atom" + "/" + "atom" + "/issues/" + str(issueNumber) + "/comments?access_token=9fa0bc9acca609d32d32a45392b4005c9e026f74"
             commentsList = apiOperations.extractApis(apiCall)
             for comment in commentsList:
                 try:
