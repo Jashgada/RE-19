@@ -3,7 +3,7 @@ import DatabaseOperations
 import urllib.request
 import json
 import datetime
-
+import time
 
 
 class issue_info_extract:
@@ -14,7 +14,12 @@ class issue_info_extract:
     # Returned: A dictionary, as returned by the api
     def extractIssueApis(self, statement):
         url = "https://api.github.com/repos/" + statement
-        response = urllib.request.urlopen(url)
+        try:
+            response = urllib.request.urlopen(url)
+        except Exception as e:
+            print(e)
+            time.sleep(3600)
+            self.extractIssueApis(statement)
         data = json.loads(response.read())
         return data
 
@@ -144,26 +149,36 @@ class issue_info_extract:
             self.updateAllKeys(issue, project_id)
 
 
-    def IssueExtraction(self, owner, repo):
+    def IssueExtraction(self, project_info):
          i = 0
-         while i<10:
-             apiCall = owner + "/" + repo + "/issues?" + "page=" + str(i) + "&state=all"
-             projectApi = owner + "/" + repo
-             projectDict = self.extractIssueApis(projectApi)
-             projectId = projectDict["id"]
+         pageNum = 0
+         while i<200:
+             apiCall = project_info['full_name'] + "/issues?" + "page=" + str(pageNum) + "&state=all&access_token=9fa0bc9acca609d32d32a45392b4005c9e026f74"
+             # projectApi = owner + "/" + repo
+             # projectDict = self.extractIssueApis(projectApi)
+             projectId = project_info['project_id']
              issueList = self.extractIssueApis(apiCall)
              if len(issueList) != 0:
                  for issue in issueList:
                      if ("pull_request" in issue) == False:
                         self.insertToDatabase(issue, projectId)
+                        i = i+1
              else:
                  print("Reached the end of the issues")
                  break
-             i = i + 1
+             pageNum = pageNum + 1
 
+    def executeFunction(self):
+        query_stmt = "SELECT * FROM network_t.new_git_project_info"
+        projectList = DatabaseOperations.query_data_dict(query_stmt)
+        for project in projectList:
+            print(type(project['full_name']))
+            if project['name'] == 'notepad-plus-plus':
+                continue
+            self.IssueExtraction(project)
 
-x = issue_info_extract()
-x.IssueExtraction("atom","atom")
+# x = issue_info_extract()
+# x.IssueExtraction("atom","atom")
 # x.IssueExtraction("atom","atom")
 # abcd = x.extractIssueApi("atom/atom/issues/19366")
 # a = abcd['body']
