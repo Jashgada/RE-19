@@ -4,11 +4,12 @@ import urllib.request
 import json
 import datetime
 import time
+import urllib.error
 
 
 class issue_info_extract:
     def __init__(self):
-        print("This was a construct")
+        print("", end='')
 
     # Input: Api statement after GET part
     # Returned: A dictionary, as returned by the api
@@ -16,12 +17,16 @@ class issue_info_extract:
         url = "https://api.github.com/repos/" + statement
         try:
             response = urllib.request.urlopen(url)
-        except Exception as e:
+        except urllib.error.HTTPError as e:
             print(e)
-            time.sleep(3600)
-            self.extractIssueApis(statement)
-        data = json.loads(response.read())
-        return data
+            if e.code == 403:
+                time.sleep(3600)
+                self.extractIssueApis(statement)
+            else:
+                return None
+        else:
+            data = json.loads(response.read())
+            return data
 
     def convertToDatetime(self, str):
         time = datetime.datetime.strptime(str[:-1], '%Y-%m-%dT%H:%M:%S')
@@ -29,20 +34,33 @@ class issue_info_extract:
 
     def searchIssueById(self, idNum):
         query = "SELECT * FROM new_git_issues WHERE issue_id='" + str(idNum) + "'"
-        projectInfo = DatabaseOperations.query_data_dict(query)
-        if len(projectInfo) == 0:
+        issueInfo = DatabaseOperations.query_data_dict(query)
+        if len(issueInfo) == 0:
             return None
         else:
-            return projectInfo[0]
+            return issueInfo[0]
+
+    def searchFullnameById(self, idNum):
+        query = "SELECT * FROM new_git_issues WHERE issue_id='" + str(idNum) + "'"
+        issueInfo = DatabaseOperations.query_data_dict(query)
+        if len(issueInfo) == 0:
+            return None
+        else:
+            query2 = "SELECT * FROM new_git_project_info WHERE project_id='" + str(issueInfo[0]['project_id']) + "'"
+            projectInfo = DatabaseOperations.query_data_dict(query2)
+            if len(projectInfo) == 0:
+                return None
+            else:
+                return projectInfo[0]["full_name"]
 
 
     def searchByKey(self,key,val):
-        query = "SELECT * FROM new_git_issues WHERE "+ str(key) + "='" + str(val) + "'"
-        projectInfo = DatabaseOperations.query_data_dict(query)
-        if len(projectInfo) == 0:
+        query = "SELECT * FROM new_git_issues WHERE " + str(key) + "='" + str(val) + "'"
+        issueInfo = DatabaseOperations.query_data_dict(query)
+        if len(issueInfo) == 0:
             return None
         else:
-            return projectInfo[0]
+            return issueInfo[0]
 
 
 
@@ -152,21 +170,24 @@ class issue_info_extract:
     def IssueExtraction(self, project_info):
          i = 0
          pageNum = 0
-         while i<200:
-             apiCall = project_info['full_name'] + "/issues?" + "page=" + str(pageNum) + "&state=all&access_token=9fa0bc9acca609d32d32a45392b4005c9e026f74"
+         while i<=150:
+             apiCall = project_info['full_name'] + "/issues?" + "page=" + str(pageNum) + "&state=all"
              # projectApi = owner + "/" + repo
              # projectDict = self.extractIssueApis(projectApi)
              projectId = project_info['project_id']
              issueList = self.extractIssueApis(apiCall)
-             if len(issueList) != 0:
-                 for issue in issueList:
-                     if ("pull_request" in issue) == False:
-                        self.insertToDatabase(issue, projectId)
-                        i = i+1
+             if issueList is None:
+                 print(projectId)
              else:
-                 print("Reached the end of the issues")
-                 break
-             pageNum = pageNum + 1
+                 if len(issueList) != 0:
+                     for issue in issueList:
+                         if ("pull_request" in issue) == False:
+                            self.insertToDatabase(issue, projectId)
+                            i = i+1
+                 else:
+                     print("Reached the end of the issues")
+                     break
+                 pageNum = pageNum + 1
 
     def executeFunction(self):
         query_stmt = "SELECT * FROM network_t.new_git_project_info"
@@ -177,18 +198,6 @@ class issue_info_extract:
                 continue
             self.IssueExtraction(project)
 
-# x = issue_info_extract()
-# x.IssueExtraction("atom","atom")
-# x.IssueExtraction("atom","atom")
-# abcd = x.extractIssueApi("atom/atom/issues/19366")
-# a = abcd['body']
-# print(a)
-# print(type(a))
-# b = apiOperations.ignoreUnicode(a)
-# print(type(b))
-# print(b)
-# c = b.encode('utf-8')
-# print(type(c))
-# print(c)
-# dt = abcd['created_at']
-# time = datetime.datetime.strptime(dt[:-1], '%Y-%m-%dT%H:%M:%S')
+
+x = issue_info_extract()
+x.executeFunction()
